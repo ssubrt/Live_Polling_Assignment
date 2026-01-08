@@ -1,0 +1,125 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  studentId String?
+  teacherId String?
+  role      Role
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  student Student? @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  teacher Teacher? @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+  @@index([teacherId])
+}
+
+enum Role {
+  STUDENT
+  TEACHER
+}
+
+model Teacher {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  polls    Poll[]
+  sessions Session[]
+
+  @@index([createdAt])
+}
+
+model Student {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  votes    Vote[]
+  sessions Session[]
+
+  @@index([createdAt])
+}
+
+model Poll {
+  id        String     @id @default(cuid())
+  question  String
+  teacherId String
+  teacher   Teacher    @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  status    PollStatus @default(PENDING)
+  timeLimit Int // in seconds
+  createdAt DateTime   @default(now())
+  startedAt DateTime?
+  endedAt   DateTime?
+  updatedAt DateTime   @updatedAt
+
+  options  PollOption[]
+  votes    Vote[]
+  messages ChatMessage[]
+
+  @@index([teacherId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+enum PollStatus {
+  PENDING
+  ACTIVE
+  CLOSED
+}
+
+model PollOption {
+  id      String  @id @default(cuid())
+  pollId  String
+  poll    Poll    @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  text    String
+  correct Boolean @default(false)
+
+  votes Vote[]
+
+  @@unique([pollId, text])
+  @@index([pollId])
+}
+
+model Vote {
+  id        String     @id @default(cuid())
+  pollId    String
+  poll      Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  studentId String
+  student   Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  optionId  String
+  option    PollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@unique([pollId, studentId])
+  @@index([pollId])
+  @@index([studentId])
+  @@index([optionId])
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  pollId    String
+  poll      Poll     @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  sender    String // name of sender
+  message   String
+  createdAt DateTime @default(now())
+
+  @@index([pollId])
+  @@index([createdAt])
+}
